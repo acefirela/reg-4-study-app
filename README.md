@@ -18,7 +18,12 @@ Needs Node.js 18 or newer.
     node tools/vault.mjs encrypt <ACCESS-CODE> content.json
     # commit index.html only
 
-`content.json` is git-ignored. Never commit it or paste plain questions into `index.html`.
+Audio guides live in `audio/*.bin`, encrypted with the same code. Their titles and scripts are the
+`AUDIO` list in `content.json`. To add or replace one:
+
+    node tools/vault.mjs encrypt-file <ACCESS-CODE> guide.mp3 audio/guide.bin
+
+`content.json` and `*.mp3` are git-ignored. Never commit it or paste plain questions into `index.html`.
 Encrypting with a different code changes the access code for everyone.
 
 ## Hosting
