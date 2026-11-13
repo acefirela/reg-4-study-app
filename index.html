@@ -55,7 +55,32 @@ button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:tra
 .btn.primary .sub{color:inherit;opacity:.9}
 .btn.right{border-color:var(--good);background:var(--good-bg)}
 .btn.wrong{border-color:var(--bad);background:var(--bad-bg)}
-.btn.rate.on{border-color:var(--brand);background:var(--brand);color:var(--brand-ink)}
+/* audio player */
+.player{margin-top:16px}
+.seek{-webkit-appearance:none;appearance:none;display:block;width:100%;height:28px;margin:0;background:transparent;cursor:pointer;touch-action:none}
+.seek::-webkit-slider-runnable-track{height:10px;border-radius:99px;
+  background:linear-gradient(to right,var(--brand) var(--p,0%),var(--soft) var(--p,0%))}
+.seek::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-8px;border-radius:50%;
+  background:var(--brand);border:4px solid var(--card);box-shadow:0 0 0 1px var(--line)}
+.seek::-moz-range-track{height:10px;border-radius:99px;background:var(--soft)}
+.seek::-moz-range-progress{height:10px;border-radius:99px;background:var(--brand)}
+.seek::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--brand);border:4px solid var(--card)}
+.times{display:flex;justify-content:space-between;font-size:17px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:2px}
+.ctrl{display:flex;align-items:center;justify-content:center;gap:28px;margin:14px 0 20px}
+.ctrl button{border:0;padding:0;border-radius:50%;display:grid;place-items:center}
+.skip{width:60px;height:60px;background:var(--tint);color:var(--brand)}
+.skip svg{width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.skip svg text{fill:currentColor;stroke:none;font:700 7.5px system-ui,sans-serif}
+.pp{width:84px;height:84px;background:var(--brand);color:var(--brand-ink);box-shadow:0 6px 18px rgba(163,22,26,.35)}
+.pp svg{width:38px;height:38px;fill:currentColor}
+.pp .i-pause,.pp.playing .i-play{display:none}
+.pp.playing .i-pause{display:block}
+.ctrl button:active{transform:scale(.94)}
+.speed{display:flex;align-items:center;gap:12px}
+.speed .lab{font-size:15px;font-weight:650;letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
+.seg{flex:1;display:flex;background:var(--soft);border-radius:14px;padding:4px}
+.seg button{flex:1;min-height:48px;border:0;border-radius:11px;background:transparent;font-weight:650}
+.seg button.on{background:var(--brand);color:var(--brand-ink)}
 .back{min-height:52px;min-width:52px;padding:0 14px;border-radius:12px;border:2px solid var(--line);
   background:var(--card);font-weight:650}
 .row{display:flex;gap:12px}
@@ -283,9 +308,18 @@ const views = {
 views.audio = function(){
   const list = inCats(AUDIO), t = V.track;
   return topBar("Audio Guides") + (t ? `<div class="card"><span class="tag">${esc(CAT_NAME[t.cat])}</span><h2>${esc(t.title)}</h2>
-      ${V.err ? `<p class="err">${esc(V.err)}</p>` : V.url ? `<audio id="player" controls preload="auto" src="${V.url}" style="width:100%"></audio>
-        <div class="row" style="margin-top:12px">${[1, 1.25, 1.5].map(r => `<button class="btn center rate" data-act="rate" data-r="${r}" style="min-height:52px;margin:0">${r}x</button>`).join("")}</div>
-        <p class="muted small" style="margin:12px 0 0">It picks up where you left off. Memory tricks are only aids; the numbers come from the study packs.</p>`
+      ${V.err ? `<p class="err">${esc(V.err)}</p>` : V.url ? `<audio id="player" preload="auto" src="${V.url}"></audio>
+        <div class="player">
+          <input class="seek" id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Position in the guide">
+          <div class="times"><span id="tcur">0:00</span><span id="tleft">-${t.mins}:00</span></div>
+          <div class="ctrl">
+            <button class="skip" data-act="skip" data-s="-15" aria-label="Back 15 seconds"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><text x="12" y="15" text-anchor="middle">15</text></svg></button>
+            <button class="pp" id="pp" data-act="playpause" aria-label="Play"><svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4.5v15a1 1 0 0 0 1.5.9l12-7.5a1 1 0 0 0 0-1.8l-12-7.5A1 1 0 0 0 8 4.5z"/></svg><svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="4" width="4.5" height="16" rx="1.2"/><rect x="14" y="4" width="4.5" height="16" rx="1.2"/></svg></button>
+            <button class="skip" data-act="skip" data-s="15" aria-label="Forward 15 seconds"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/><text x="12" y="15" text-anchor="middle">15</text></svg></button>
+          </div>
+          <div class="speed"><span class="lab">Speed</span><div class="seg">${[1, 1.25, 1.5].map(r => `<button class="rate" data-act="rate" data-r="${r}">${r}x</button>`).join("")}</div></div>
+        </div>
+        <p class="muted small" style="margin:16px 0 0">It picks up where you left off. Memory tricks are only aids; the numbers come from the study packs.</p>`
         : `<div class="load"><i id="prog"></i></div><p class="muted small" id="progtx" style="margin:0">Downloading the audio...</p>`}</div>
       ${t.text ? `<details class="card"><summary style="font-weight:650;min-height:32px;cursor:pointer">Read the script</summary>${t.text.split(/\n\s*\n/).map(p => `<p style="margin:12px 0 0">${esc(p)}</p>`).join("")}</details>` : ""}` : "") +
     (t ? `<div class="tag">All guides</div>` : `<p class="muted">Narrated summaries of each exam category, with simple tricks to remember the numbers.</p>`) +
@@ -307,8 +341,30 @@ function wireAudio(){
     if (pos > 5 && pos < el.duration - 10) el.currentTime = pos;
     el.playbackRate = S.audioRate || 1;
   });
-  el.addEventListener("timeupdate", () => { if (Math.abs(el.currentTime - last) > 5) { last = el.currentTime; S.audioPos[id] = last; save(); } });
+  const seek = document.getElementById("seek"), pp = document.getElementById("pp");
+  const cur = document.getElementById("tcur"), left = document.getElementById("tleft");
+  const fmt = s => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+  let dragging = false;
+  const paint = time => {
+    const d = el.duration || 0;
+    seek.style.setProperty("--p", (d ? time / d * 100 : 0) + "%");
+    cur.textContent = fmt(time); if (d) left.textContent = "-" + fmt(d - time);
+  };
+  const state = () => { const on = !el.paused && !el.ended; pp.classList.toggle("playing", on); pp.setAttribute("aria-label", on ? "Pause" : "Play"); };
+  el.addEventListener("loadedmetadata", () => paint(el.currentTime));
+  el.addEventListener("timeupdate", () => {
+    if (!dragging) { seek.value = el.duration ? el.currentTime / el.duration * 1000 : 0; paint(el.currentTime); }
+    if (Math.abs(el.currentTime - last) > 5) { last = el.currentTime; S.audioPos[id] = last; save(); }
+  });
+  ["play", "pause", "ended"].forEach(ev => el.addEventListener(ev, state));
   el.addEventListener("ended", () => { S.audioPos[id] = 0; save(); });
+  seek.addEventListener("input", () => { dragging = true; paint(seek.value / 1000 * (el.duration || 0)); });
+  seek.addEventListener("change", () => { if (el.duration) el.currentTime = seek.value / 1000 * el.duration; dragging = false; });
+  try {                                            // lock-screen / headset controls
+    navigator.mediaSession.metadata = new MediaMetadata({ title: V.track.title, artist: "Reg-4 Study" });
+    navigator.mediaSession.setActionHandler("seekbackward", () => acts.skip({ dataset:{ s:"-15" } }));
+    navigator.mediaSession.setActionHandler("seekforward", () => acts.skip({ dataset:{ s:"15" } }));
+  } catch (x) {}
   mark();
 }
 
@@ -407,6 +463,11 @@ const acts = {
       V.url = URL.createObjectURL(new Blob([mp3], { type:"audio/mpeg" }));
     } catch (x) { if (V !== view) return; V.err = "Could not load this audio guide. Check your connection and try again."; }
     render();
+  },
+  playpause(){ const p = document.getElementById("player"); if (p) { if (p.paused) p.play().catch(() => {}); else p.pause(); } },
+  skip(el){
+    const p = document.getElementById("player"); if (!p || !p.duration) return;
+    p.currentTime = Math.min(p.duration, Math.max(0, p.currentTime + (+el.dataset.s)));
   },
   rate(el){
     S.audioRate = +el.dataset.r; save();
