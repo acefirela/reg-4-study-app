@@ -56,6 +56,10 @@ button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:tra
 .h1row{display:flex;align-items:center;gap:12px}
 .h1ic{flex:none;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:var(--brand);color:var(--brand-ink)}
 .saved{color:var(--good);font-weight:650}
+.ver{margin-top:4px;font-size:17px}
+.ver summary{font-weight:650;min-height:32px;cursor:pointer}
+.ver ul{list-style:none;padding:0;margin:12px 0}
+.ver li{padding:10px 0;border-top:1px solid var(--line)}
 .load{height:10px;background:var(--soft);border-radius:99px;overflow:hidden;margin:12px 0 8px}
 .load i{display:block;height:100%;width:0;background:var(--brand);transition:width .2s}
 .btn.primary .sub{color:inherit;opacity:.9}
@@ -158,6 +162,18 @@ const CATS = [
 ];
 const CAT_NAME = Object.fromEntries(CATS.map(c => [c.id, c.name]));
 const PASS_PCT = 80;
+/* Version shown in the app. Raise it and add a line to CHANGES (newest first) with every update. */
+const APP_VERSION = "1.7.0";
+const CHANGES = [
+  ["1.7.0", "Nov 13, 2026", "Version number, list of changes and a Check for updates button."],
+  ["1.6.0", "Nov 13, 2026", "Flashcards: swipe or use Previous / Next to browse cards."],
+  ["1.5.0", "Nov 13, 2026", "Installable app with its own icon. Works without signal."],
+  ["1.4.0", "Nov 13, 2026", "New audio player: big play button, 15-second skip, speed control."],
+  ["1.3.0", "Nov 10, 2026", "Icons on the home screen. Audio guides are saved on the phone after the first play."],
+  ["1.2.0", "Nov 10, 2026", "Audio study guides with memory tricks."],
+  ["1.1.0", "Nov 10, 2026", "Question bank locked with the access code."],
+  ["1.0.0", "Nov 10, 2026", "First version: flashcards, quiz, practice problems, missed-question review."]
+];
 const KEYSTORE = "reg4study.key";
 const KEY = "reg4study.v1";
 
@@ -216,7 +232,8 @@ const views = {
                autocorrect="off" spellcheck="false" aria-label="Access code" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;">
         <div class="err" id="err" role="alert"></div>
         <button class="btn primary" type="submit">Unlock</button>
-      </form>`;
+      </form>
+      <p class="muted small" style="text-align:center;margin-top:20px">Version ${APP_VERSION}</p>`;
   },
 
   home(){
@@ -243,7 +260,12 @@ const views = {
       ${nav("audio", "audio", "Audio Study Guides", `${inCats(AUDIO).length} guides with memory tricks`, inCats(AUDIO).length)}
       ${nav("review", "retry", "Review Missed Questions", `${missed} to retry`, missed)}
       ${installEvt ? `<button class="btn primary" data-act="install" style="margin-top:12px">Install this app on your phone</button>` : ""}
-      <button class="btn center small" data-act="reset" style="min-height:52px;margin-top:12px">Reset my progress</button>`;
+      <button class="btn center small" data-act="reset" style="min-height:52px;margin-top:12px">Reset my progress</button>
+      <details class="card ver"><summary>Version ${APP_VERSION} <span class="muted">&middot; what's new</span></summary>
+        <ul>${CHANGES.map(c => `<li><b>${c[0]}</b> <span class="muted">${c[1]}</span><br>${esc(c[2])}</li>`).join("")}</ul>
+        <button class="btn center small" data-act="update" style="min-height:52px;margin:0">Check for updates</button>
+        <p class="muted small" id="updmsg" role="status" style="margin:10px 0 0;min-height:1.4em"></p>
+      </details>`;
   },
 
   flash(){
@@ -476,6 +498,18 @@ const acts = {
     }
   },
   async install(){ if (!installEvt) return; const e = installEvt; installEvt = null; e.prompt(); try { await e.userChoice; } catch (x) {} render(); },
+  async update(el){
+    const msg = document.getElementById("updmsg"); el.disabled = true; msg.textContent = "Checking...";
+    try {
+      const res = await fetch("./?check=" + Date.now(), { cache:"no-store" }); if (!res.ok) throw 0;
+      const html = await res.text(), m = html.match(/const APP_VERSION = "([^"]+)"/);
+      if (m && m[1] !== APP_VERSION) {
+        msg.textContent = "Updating to version " + m[1] + "...";
+        try { const c = await caches.open("reg4-shell-v1"); await c.put("./", new Response(html, { headers:{ "content-type":"text/html; charset=utf-8" } })); } catch (x) {}
+        location.reload();
+      } else { msg.textContent = "You have the latest version (" + APP_VERSION + ")."; el.disabled = false; }
+    } catch (x) { msg.textContent = "Could not check. Connect to the internet and try again."; el.disabled = false; }
+  },
   audio(){ go({ name:"audio" }); },
   async track(el){
     const t = AUDIO.find(a => a.id === el.dataset.id); if (!t) return;
