@@ -6,6 +6,12 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#a3161a">
 <title>Reg-4 Study</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Reg-4 Study">
 <style>
 :root{
   --bg:#f4f1ec; --card:#ffffff; --ink:#1c1a18; --muted:#5e5850; --line:#d9d3c9;
@@ -172,7 +178,7 @@ const topBar = title => `<div class="top"><button class="back" data-act="home" a
 const bar = (i, n) => `<div class="bar"><i style="width:${n ? Math.round(i / n * 100) : 0}%"></i></div>`;
 
 const ICON = {
-  flame:'<path d="M12 3c.5 3 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 .8 3 2 3 .5-3-1-5 1-8.5z"/>',
+  shield:'<path d="M12 3l7 2.6v5.9c0 4.2-2.9 7.3-7 8.9-4.1-1.6-7-4.700-7-8.9V5.6z"/><path d="M8.8 11.700l2.300 2.400 4.2-4.600"/>',
   cards:'<rect x="3" y="8" width="14" height="12" rx="2"/><path d="M7 8V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>',
   quiz:'<path d="M10 6h11M10 12h11M10 18h11"/><path d="M3 6l1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17"/>',
   calc:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 7.5h7M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01"/>',
@@ -186,13 +192,18 @@ const nav = (act, icon, title, sub, on = true, attrs = "") =>
 const AUDIO_CACHE = "reg4-audio-v1";
 const audioKey = t => t.file + "?v=" + (t.v || 1);
 
+let installEvt = null;            // set when the browser offers to install the app
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; if (V.name === "home") render(); });
+window.addEventListener("appinstalled", () => { installEvt = null; if (V.name === "home") render(); });
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+
 let V = { name:"home" };          // current view state
 function go(v){ if (V.name === "audio") stopAudio(); V = v; render(); window.scrollTo(0, 0); }
 
 /* ---------- views ---------- */
 const views = {
   gate(){
-    return `<div class="h1row"><span class="h1ic">${svg("flame")}</span><h1>Reg-4 Study</h1></div>
+    return `<div class="h1row"><span class="h1ic">${svg("shield")}</span><h1>Reg-4 Study</h1></div>
       <p class="muted">Enter your 8-character access code. You only need to do this once on this device.</p>
       <form data-form="gate" autocomplete="off">
         <input class="code" id="code" maxlength="8" inputmode="text" autocapitalize="characters"
@@ -208,7 +219,7 @@ const views = {
     const mastered = qs.filter(q => S.stats[q.id] && S.stats[q.id].last).length;
     const last = S.quizzes[S.quizzes.length - 1];
     const count = id => QUESTIONS.filter(q => q.cat === id).length;
-    return `<div class="h1row"><span class="h1ic">${svg("flame")}</span><h1>Reg-4 Study</h1></div>
+    return `<div class="h1row"><span class="h1ic">${svg("shield")}</span><h1>Reg-4 Study</h1></div>
       <p class="muted">LAFD Regulation 4 exam practice</p>
       ${QUESTIONS.length + PROBLEMS.length === 0 ? `<div class="card"><b>No study questions loaded yet.</b>
         <p class="muted small" style="margin:8px 0 0">Questions are added only from the LAFD Reg-4 manual, the study reference table and the company study packs.</p></div>` : ""}
@@ -225,6 +236,7 @@ const views = {
       ${nav("problems", "calc", "Practice Problems", `${ps.length} step-by-step problems`, ps.length)}
       ${nav("audio", "audio", "Audio Study Guides", `${inCats(AUDIO).length} guides with memory tricks`, inCats(AUDIO).length)}
       ${nav("review", "retry", "Review Missed Questions", `${missed} to retry`, missed)}
+      ${installEvt ? `<button class="btn primary" data-act="install" style="margin-top:12px">Install this app on your phone</button>` : ""}
       <button class="btn center small" data-act="reset" style="min-height:52px;margin-top:12px">Reset my progress</button>`;
   },
 
@@ -450,6 +462,7 @@ const acts = {
       go({ name:"result", right:V.right, total, wrong:V.wrong, review:V.review });
     }
   },
+  async install(){ if (!installEvt) return; const e = installEvt; installEvt = null; e.prompt(); try { await e.userChoice; } catch (x) {} render(); },
   audio(){ go({ name:"audio" }); },
   async track(el){
     const t = AUDIO.find(a => a.id === el.dataset.id); if (!t) return;
@@ -502,6 +515,7 @@ async function openVault(bits){
   const c = JSON.parse(new TextDecoder().decode(buf));
   QUESTIONS = c.QUESTIONS; PROBLEMS = c.PROBLEMS; AUDIO = c.AUDIO || []; KEYBITS = bits;
   byId = Object.fromEntries(QUESTIONS.map(q => [q.id, q]));
+  try { navigator.storage.persist(); } catch (x) {}      // ask the phone not to clear saved progress
 }
 
 app.addEventListener("submit", async e => {

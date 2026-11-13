@@ -26,6 +26,11 @@ Audio guides live in `audio/*.bin`, encrypted with the same code. Their titles a
 `content.json` and `*.mp3` are git-ignored. Never commit it or paste plain questions into `index.html`.
 Encrypting with a different code changes the access code for everyone.
 
+## Installable web app
+
+`manifest.webmanifest`, `sw.js` and `icons/` make the page installable ("Add to Home screen") and let it
+open without a connection. Audio guides that were already played are kept on the phone too.
+
 ## Hosting
 
 Settings → Pages → Deploy from a branch → `main` / `/ (root)`.
