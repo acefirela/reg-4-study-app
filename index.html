@@ -106,6 +106,12 @@ button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:tra
 .flash{min-height:260px;display:flex;flex-direction:column;width:100%;text-align:left}
 .flash .body{flex:1;font-size:23px;line-height:1.35;overflow-wrap:anywhere}
 .flash .hint{color:var(--muted);font-size:17px;margin-top:14px}
+.flash{touch-action:pan-y}
+@keyframes inR{from{transform:translateX(36px);opacity:.3}to{transform:none;opacity:1}}
+@keyframes inL{from{transform:translateX(-36px);opacity:.3}to{transform:none;opacity:1}}
+.flash.in-r{animation:inR .18s ease-out}
+.flash.in-l{animation:inL .18s ease-out}
+@media (prefers-reduced-motion: reduce){.flash.in-r,.flash.in-l{animation:none}}
 .qtext{font-size:23px;line-height:1.35;font-weight:600;margin-bottom:16px;overflow-wrap:anywhere}
 .bar{height:10px;background:var(--soft);border-radius:99px;overflow:hidden;margin-bottom:16px}
 .bar i{display:block;height:100%;background:var(--brand)}
@@ -241,21 +247,26 @@ const views = {
   },
 
   flash(){
-    const d = V.deck, q = d[V.i];
-    if (!q) return topBar("Flashcards") + `<div class="card"><h2>Deck finished</h2>
-      <p>You went through ${d.length} cards. Got it: ${V.ok}. Missed: ${d.length - V.ok}.</p></div>
+    const d = V.deck, q = d[V.i], marks = Object.values(V.done);
+    if (!q) { const got = marks.filter(Boolean).length, miss = marks.length - got;
+      return topBar("Flashcards") + `<div class="card"><h2>Deck finished</h2>
+      <p>You went through ${d.length} cards. Got it: ${got}. Missed: ${miss}. Not marked: ${d.length - marks.length}.</p></div>
       <button class="btn primary" data-act="flash">Go again</button>
-      <button class="btn center" data-act="home">Home</button>`;
+      <button class="btn center" data-act="fprev">Back to the last card</button>
+      <button class="btn center" data-act="home">Home</button>`; }
+    const mark = V.done[q.id];
     return topBar("Flashcards") + bar(V.i, d.length) +
-      `<p class="muted small">Card ${V.i + 1} of ${d.length}</p>
-      <button class="card flash" data-act="flip" aria-live="polite">
+      `<p class="muted small">Card ${V.i + 1} of ${d.length}${mark === undefined ? "" : ` &middot; <b class="${mark ? "pass" : "fail"}">${mark ? "Got it" : "Missed it"}</b>`}</p>
+      <button class="card flash ${V.anim || ""}" id="fcard" data-act="flip" aria-live="polite">
         <span class="tag">${esc(CAT_NAME[q.cat])} &middot; ${V.flipped ? "Answer" : "Question"}</span>
         <span class="body">${esc(V.flipped ? q.a : q.q)}</span>
-        ${V.flipped ? srcHtml(q) : `<span class="hint">Tap to see the answer</span>`}
+        ${V.flipped ? srcHtml(q) : `<span class="hint">Tap to see the answer &middot; swipe for the next card</span>`}
       </button>
       ${V.flipped ? `<div class="row"><button class="btn center wrong" data-act="grade" data-ok="0">Missed it</button>
         <button class="btn center right" data-act="grade" data-ok="1">Got it</button></div>`
-        : `<button class="btn primary" data-act="flip">Show answer</button>`}`;
+        : `<button class="btn primary" data-act="flip">Show answer</button>`}
+      <div class="row"><button class="btn center" data-act="fprev" ${V.i ? "" : "disabled"}>&lsaquo; Previous</button>
+        <button class="btn center" data-act="fnext">${V.i + 1 < d.length ? "Next &rsaquo;" : "Finish"}</button></div>`;
   },
 
   quizsetup(){
@@ -432,13 +443,15 @@ const acts = {
     S.cats = on ? S.cats.filter(c => c !== id) : [...S.cats, id];
     save(); render();
   },
-  flash(){ go({ name:"flash", deck:shuffle(inCats(QUESTIONS)), i:0, ok:0, flipped:false }); },
-  flip(){ V.flipped = !V.flipped; render(); },
+  flash(){ go({ name:"flash", deck:shuffle(inCats(QUESTIONS)), i:0, done:{}, flipped:false }); },
+  flip(){ if (Date.now() - swipedAt < 400) return; V.flipped = !V.flipped; V.anim = ""; render(); },
   grade(el){
-    const ok = el.dataset.ok === "1";
-    record(V.deck[V.i], ok); if (ok) V.ok++;
-    V.i++; V.flipped = false; render(); window.scrollTo(0, 0);
+    const ok = el.dataset.ok === "1", q = V.deck[V.i];
+    record(q, ok); V.done[q.id] = ok;
+    acts.fnext();
   },
+  fnext(){ if (V.i < V.deck.length) { V.i++; V.flipped = false; V.anim = "in-r"; render(); window.scrollTo(0, 0); } },
+  fprev(){ if (V.i > 0) { V.i--; V.flipped = false; V.anim = "in-l"; render(); window.scrollTo(0, 0); } },
   quizsetup(){ go({ name:"quizsetup" }); },
   quiz(el){
     const pool = shuffle(inCats(QUESTIONS).filter(hasChoices));
@@ -496,6 +509,19 @@ const acts = {
     S.missed = {}; S.stats = {}; S.quizzes = []; save(); render();
   }
 };
+
+/* flashcards: swipe left for the next card, right for the previous one */
+let swipe = null, swipedAt = 0;
+app.addEventListener("touchstart", e => {
+  swipe = V.name === "flash" && e.target.closest("#fcard") ? { x:e.touches[0].clientX, y:e.touches[0].clientY } : null;
+}, { passive:true });
+app.addEventListener("touchend", e => {
+  if (!swipe) return;
+  const dx = e.changedTouches[0].clientX - swipe.x, dy = e.changedTouches[0].clientY - swipe.y; swipe = null;
+  if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+  swipedAt = Date.now();
+  if (dx < 0) acts.fnext(); else acts.fprev();
+}, { passive:true });
 
 app.addEventListener("click", e => {
   const el = e.target.closest("[data-act]");
